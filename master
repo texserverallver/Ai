@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI QUEST - 인공지능 지식 도전</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { min-height: 100vh; }
+  body { background: #0a0e1a; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0a0e1a; }
+  ::-webkit-scrollbar-thumb { background: #2a3654; border-radius: 3px; }
+  @keyframes slideDown { from { opacity:0; transform: translateX(-50%) translateY(-20px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.05); } }
+  input::placeholder { color: #5a6a8a; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── Data ───────────────────────────────────────────────────────────────────
+const STAGES = [
+  {
+    id: 1, title: "AI의 기초", desc: "인공지능의 기본 개념",
+    questions: [
+      { q: "인공지능(AI)의 가장 기본적인 정의는?", options: ["인간의 지능을 모방하는 컴퓨터 시스템", "자동으로 코딩하는 프로그램", "인터넷에 연결된 모든 기기", "빅데이터를 저장하는 기술"], answer: 0 },
+      { q: "머신러닝과 딥러닝의 관계는?", options: ["서로 무관한 기술이다", "딥러닝은 머신러닝의 하위 분야이다", "머신러닝이 딥러닝의 하위 분야이다", "둘은 같은 의미이다"], answer: 1 },
+      { q: "AI 연구의 아버지라 불리는 사람은?", options: ["앨런 튜링", "일론 머스크", "스티브 잡스", "빌 게이츠"], answer: 0 },
+      { q: "튜링 테스트의 목적은?", options: ["컴퓨터의 속도 측정", "기계가 인간처럼 사고할 수 있는지 판별", "프로그래밍 언어 평가", "네트워크 보안 테스트"], answer: 1 },
+      { q: "다음 중 AI의 유형이 아닌 것은?", options: ["약한 AI (Narrow AI)", "강한 AI (General AI)", "초인공지능 (Super AI)", "양자 AI (Quantum AI)"], answer: 3 },
+    ]
+  },
+  {
+    id: 2, title: "머신러닝 입문", desc: "머신러닝의 핵심 개념",
+    questions: [
+      { q: "지도 학습(Supervised Learning)에서 필요한 것은?", options: ["레이블이 있는 데이터", "레이블이 없는 데이터", "강화 신호", "규칙 기반 시스템"], answer: 0 },
+      { q: "비지도 학습의 대표적인 예시는?", options: ["이미지 분류", "클러스터링", "음성 인식", "자율 주행"], answer: 1 },
+      { q: "과적합(Overfitting)이란?", options: ["모델이 학습 데이터에만 지나치게 맞춰진 상태", "모델의 학습이 부족한 상태", "데이터가 너무 많은 상태", "컴퓨팅 자원이 부족한 상태"], answer: 0 },
+      { q: "다음 중 분류(Classification) 알고리즘이 아닌 것은?", options: ["로지스틱 회귀", "의사결정 트리", "K-평균 클러스터링", "서포트 벡터 머신"], answer: 2 },
+      { q: "교차 검증(Cross-validation)의 주된 목적은?", options: ["학습 속도 향상", "모델의 일반화 성능 평가", "데이터 전처리", "특성 추출"], answer: 1 },
+    ]
+  },
+  {
+    id: 3, title: "딥러닝 기초", desc: "신경망과 딥러닝의 세계",
+    questions: [
+      { q: "인공 신경망의 기본 단위는?", options: ["노드(뉴런)", "레이어", "엣지", "그래프"], answer: 0 },
+      { q: "활성화 함수(Activation Function)의 역할은?", options: ["데이터를 저장한다", "비선형성을 도입한다", "학습률을 조절한다", "가중치를 초기화한다"], answer: 1 },
+      { q: "역전파(Backpropagation)의 핵심 원리는?", options: ["순방향으로 에러를 전파", "경사 하강법으로 가중치 업데이트", "무작위 탐색", "유전 알고리즘"], answer: 1 },
+      { q: "CNN(합성곱 신경망)이 주로 사용되는 분야는?", options: ["자연어 처리", "이미지 인식", "시계열 예측", "추천 시스템"], answer: 1 },
+      { q: "드롭아웃(Dropout)은 무엇을 방지하기 위한 기법인가?", options: ["과소적합", "과적합", "기울기 소실", "데이터 누수"], answer: 1 },
+    ]
+  },
+  {
+    id: 4, title: "자연어 처리(NLP)", desc: "언어를 이해하는 AI",
+    questions: [
+      { q: "토큰화(Tokenization)란?", options: ["텍스트를 작은 단위로 분리하는 과정", "암호화 과정", "번역 과정", "음성을 텍스트로 변환"], answer: 0 },
+      { q: "Transformer 모델의 핵심 메커니즘은?", options: ["순환 구조", "셀프 어텐션(Self-Attention)", "합성곱 연산", "결정 트리"], answer: 1 },
+      { q: "GPT에서 'P'는 무엇을 의미하는가?", options: ["Parallel", "Pre-trained", "Predictive", "Probabilistic"], answer: 1 },
+      { q: "BERT의 학습 방식의 특징은?", options: ["왼쪽에서 오른쪽으로만 학습", "양방향(Bidirectional) 학습", "비지도 학습만 사용", "강화 학습 기반"], answer: 1 },
+      { q: "워드 임베딩(Word Embedding)의 목적은?", options: ["단어를 벡터 공간에 매핑", "문법 검사", "맞춤법 교정", "번역 자동화"], answer: 0 },
+    ]
+  },
+  {
+    id: 5, title: "컴퓨터 비전", desc: "이미지와 영상 인식의 세계",
+    questions: [
+      { q: "컴퓨터 비전에서 '객체 탐지(Object Detection)'란?", options: ["이미지에서 객체의 위치와 종류를 식별", "이미지를 생성하는 기술", "영상을 압축하는 기술", "3D 모델링"], answer: 0 },
+      { q: "YOLO 알고리즘의 특징은?", options: ["매우 느리지만 정확함", "한 번의 순전파로 실시간 객체 탐지", "텍스트 전용 모델", "비지도 학습 기반"], answer: 1 },
+      { q: "이미지 세그멘테이션(Segmentation)이란?", options: ["이미지를 픽셀 단위로 분류", "이미지 크기 조절", "색상 보정", "노이즈 제거"], answer: 0 },
+      { q: "GAN(생성적 적대 신경망)의 구성 요소는?", options: ["인코더와 디코더", "생성자와 판별자", "입력층과 출력층", "훈련 세트와 테스트 세트"], answer: 1 },
+      { q: "전이 학습(Transfer Learning)의 장점은?", options: ["항상 처음부터 학습해야 함", "적은 데이터로도 좋은 성능 달성 가능", "GPU가 필요 없음", "과적합이 절대 발생하지 않음"], answer: 1 },
+    ]
+  },
+  {
+    id: 6, title: "강화 학습", desc: "시행착오로 배우는 AI",
+    questions: [
+      { q: "강화 학습의 핵심 요소가 아닌 것은?", options: ["에이전트", "환경", "레이블", "보상"], answer: 2 },
+      { q: "Q-러닝에서 'Q'는 무엇을 의미하는가?", options: ["Quality(품질)", "Query(질의)", "Quantum(양자)", "Quick(빠른)"], answer: 0 },
+      { q: "알파고(AlphaGo)는 어떤 학습 방법을 사용했는가?", options: ["지도 학습만", "비지도 학습만", "강화 학습 + 지도 학습", "규칙 기반 시스템"], answer: 2 },
+      { q: "탐색(Exploration)과 활용(Exploitation)의 딜레마란?", options: ["데이터가 부족한 문제", "새로운 시도와 기존 지식 활용 사이의 균형", "과적합 문제", "컴퓨팅 자원 문제"], answer: 1 },
+      { q: "마르코프 결정 과정(MDP)의 핵심 가정은?", options: ["미래는 과거 전체에 의존", "현재 상태만으로 미래 결정 가능", "보상은 항상 양수", "행동 공간이 무한"], answer: 1 },
+    ]
+  },
+  {
+    id: 7, title: "AI 윤리와 안전", desc: "책임있는 AI 개발",
+    questions: [
+      { q: "AI 편향(Bias)의 주요 원인은?", options: ["하드웨어 성능 부족", "편향된 학습 데이터", "프로그래밍 언어의 한계", "인터넷 속도"], answer: 1 },
+      { q: "설명 가능한 AI(Explainable AI, XAI)의 목적은?", options: ["AI 속도 향상", "AI 결정 과정의 투명성 확보", "데이터 암호화", "모델 크기 축소"], answer: 1 },
+      { q: "AI의 '환각(Hallucination)' 현상이란?", options: ["AI가 시각적 착시를 만드는 것", "AI가 사실이 아닌 정보를 생성하는 것", "AI가 느려지는 현상", "AI가 자아를 갖는 것"], answer: 1 },
+      { q: "RLHF(인간 피드백 기반 강화 학습)의 목적은?", options: ["학습 속도 향상", "인간의 선호도에 맞게 AI 정렬", "데이터 수집 자동화", "하드웨어 최적화"], answer: 1 },
+      { q: "AI 안전(AI Safety) 연구의 핵심 목표는?", options: ["AI를 더 빠르게 만드는 것", "AI가 인간에게 유익하고 안전하게 작동하도록 보장", "AI 개발 비용 절감", "AI의 에너지 소비 감소"], answer: 1 },
+    ]
+  },
+  {
+    id: 8, title: "생성형 AI", desc: "콘텐츠를 창조하는 AI",
+    questions: [
+      { q: "디퓨전 모델(Diffusion Model)의 원리는?", options: ["이미지에 노이즈를 추가했다가 제거하며 생성", "GAN과 동일한 구조", "규칙 기반 생성", "템플릿 매칭"], answer: 0 },
+      { q: "프롬프트 엔지니어링이란?", options: ["하드웨어 설계", "AI에 효과적인 입력을 설계하는 기술", "네트워크 최적화", "데이터베이스 설계"], answer: 1 },
+      { q: "RAG(검색 증강 생성)의 핵심 아이디어는?", options: ["모델 크기를 키우는 것", "외부 지식을 검색하여 생성에 활용", "이미지를 텍스트로 변환", "코드를 자동 생성"], answer: 1 },
+      { q: "멀티모달 AI란?", options: ["여러 언어를 처리하는 AI", "텍스트, 이미지, 음성 등 여러 형태의 데이터를 처리하는 AI", "여러 GPU를 사용하는 AI", "여러 회사가 공동 개발한 AI"], answer: 1 },
+      { q: "LLM의 '스케일링 법칙(Scaling Law)'이란?", options: ["모델/데이터 크기와 성능의 관계 법칙", "전력 소비 법칙", "사용자 수 증가 법칙", "가격 책정 원칙"], answer: 0 },
+    ]
+  },
+  {
+    id: 9, title: "AI 응용 분야", desc: "실세계에서의 AI 활용",
+    questions: [
+      { q: "자율주행 레벨 5는?", options: ["운전자 보조만 가능", "특정 조건에서만 자율주행", "모든 상황에서 완전 자율주행", "원격 조종 주행"], answer: 2 },
+      { q: "AI 신약 개발에서 AI의 역할은?", options: ["약을 직접 제조", "후보 물질 탐색 및 임상 시험 최적화", "환자 진료", "약국 운영"], answer: 1 },
+      { q: "추천 시스템의 '콜드 스타트' 문제란?", options: ["서버가 느려지는 문제", "새 사용자/아이템에 대한 정보 부족", "시스템 과열 문제", "데이터 손실 문제"], answer: 1 },
+      { q: "엣지 AI(Edge AI)란?", options: ["클라우드에서만 동작하는 AI", "기기 자체에서 AI 추론을 수행", "네트워크 경계의 보안 AI", "게임 AI"], answer: 1 },
+      { q: "AI 칩의 대표적인 예시는?", options: ["CPU만 해당", "GPU, TPU, NPU", "RAM", "SSD"], answer: 1 },
+    ]
+  },
+  {
+    id: 10, title: "AI 최종 보스", desc: "AI 마스터에 도전하라!",
+    questions: [
+      { q: "Attention 메커니즘에서 Q, K, V는 각각 무엇인가?", options: ["Query, Key, Value", "Quick, Keep, Verify", "Quality, Knowledge, Vision", "Quantize, Kernel, Vector"], answer: 0 },
+      { q: "지식 증류(Knowledge Distillation)란?", options: ["데이터를 필터링하는 기술", "큰 모델의 지식을 작은 모델로 전이", "데이터베이스 최적화", "특성 공학의 한 방법"], answer: 1 },
+      { q: "연합 학습(Federated Learning)의 핵심 특징은?", options: ["중앙 서버에 데이터를 모음", "데이터를 이동시키지 않고 분산 학습", "하나의 GPU만 사용", "오프라인에서만 동작"], answer: 1 },
+      { q: "신경 구조 탐색(NAS)이란?", options: ["뇌 과학 연구", "AI가 최적의 신경망 구조를 자동 설계", "네트워크 보안 기술", "데이터 시각화 도구"], answer: 1 },
+      { q: "AGI(범용 인공지능)가 달성되었다고 판단하는 기준은?", options: ["특정 게임에서 인간을 이김", "인간 수준의 다양한 지적 과제를 수행 가능", "인터넷 검색 속도가 빠름", "전력 소비가 적음"], answer: 1 },
+    ]
+  },
+];
+
+const ACHIEVEMENTS = [
+  { id: "first_step", title: "첫 발걸음", desc: "첫 번째 스테이지를 클리어하라", icon: "\u{1F423}", condition: (u) => u.clearedStages && u.clearedStages.length >= 1 },
+  { id: "half_way", title: "반쯤 왔다!", desc: "5개 스테이지를 클리어하라", icon: "\u26A1", condition: (u) => u.clearedStages && u.clearedStages.length >= 5 },
+  { id: "master", title: "AI 마스터", desc: "모든 스테이지를 클리어하라", icon: "\u{1F451}", condition: (u) => u.clearedStages && u.clearedStages.length >= 10 },
+  { id: "perfect_one", title: "완벽주의자", desc: "한 스테이지에서 전부 정답을 맞혀라", icon: "\u{1F48E}", condition: (u) => u.perfectStages && u.perfectStages.length >= 1 },
+  { id: "perfect_three", title: "트리플 퍼펙트", desc: "3개 스테이지에서 전부 정답을 맞혀라", icon: "\u{1F525}", condition: (u) => u.perfectStages && u.perfectStages.length >= 3 },
+  { id: "speed_demon", title: "스피드 데몬", desc: "한 스테이지를 60초 안에 클리어하라", icon: "\u23F1\uFE0F", condition: (u) => u.speedClear },
+  { id: "comeback", title: "재도전의 용사", desc: "실패한 스테이지를 다시 도전하여 클리어하라", icon: "\u{1F504}", condition: (u) => u.retryClears >= 1 },
+  { id: "streak_3", title: "연속 클리어", desc: "3개 스테이지를 연속으로 클리어하라", icon: "\u{1F3AF}", condition: (u) => u.maxStreak >= 3 },
+];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const STORAGE_KEY = "ai_quiz_users";
+const getUsers = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch(e) { return {}; } };
+const saveUsers = (u) => localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+const saveUser = (id, data) => { const u = getUsers(); u[id] = data; saveUsers(u); };
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
+const C = {
+  bg: "#0a0e1a", surface: "#111827", card: "#1a2236", cardHover: "#1f2b42",
+  border: "#2a3654", primary: "#6c63ff", primaryLight: "#8b83ff",
+  accent: "#00e5a0", accentDim: "#00b37d", danger: "#ff4d6a", dangerDim: "#cc3d55",
+  textPrimary: "#e8ecf4", textSecondary: "#8896b3", textDim: "#5a6a8a",
+  gold: "#ffd700", silver: "#a0aec0",
+};
+
+// ─── NavBtn ─────────────────────────────────────────────────────────────────
+function NavBtn({ children, active, onClick }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        padding: "8px 16px", cursor: "pointer", fontSize: 14, fontWeight: active ? 700 : 500,
+        color: active ? C.accent : hov ? C.textPrimary : C.textSecondary,
+        borderBottom: active ? "2px solid " + C.accent : "2px solid transparent",
+        transition: "all .15s", lineHeight: "40px", whiteSpace: "nowrap"
+      }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Auth Screen ────────────────────────────────────────────────────────────
+function AuthScreen({ onLogin }) {
+  const [mode, setMode] = useState("login");
+  const [id, setId] = useState("");
+  const [pw, setPw] = useState("");
+  const [username, setUsername] = useState("");
+  const [err, setErr] = useState("");
+
+  const handleSubmit = () => {
+    if (!id.trim() || !pw.trim()) return setErr("아이디와 비밀번호를 입력해주세요.");
+    const users = getUsers();
+    if (mode === "signup") {
+      if (!username.trim()) return setErr("닉네임을 입력해주세요.");
+      if (users[id]) return setErr("이미 존재하는 아이디입니다.");
+      if (pw.length < 4) return setErr("비밀번호는 4자 이상이어야 합니다.");
+      const data = { pw: pw, username: username, clearedStages: [], perfectStages: [], achievements: [], speedClear: false, retryClears: 0, maxStreak: 0, failedStages: [], currentStreak: 0 };
+      saveUser(id, data);
+      onLogin(id, data);
+    } else {
+      if (!users[id]) return setErr("존재하지 않는 아이디입니다.");
+      if (users[id].pw !== pw) return setErr("비밀번호가 틀립니다.");
+      onLogin(id, users[id]);
+    }
+  };
+
+  const inputStyle = {
+    width: "100%", padding: "14px 16px", background: C.card, border: "1px solid " + C.border,
+    borderRadius: 10, color: C.textPrimary, fontSize: 15, outline: "none", transition: "border-color .2s"
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', sans-serif" }}>
+      <div style={{ width: 400, maxWidth: "90vw", padding: 40, background: C.surface, borderRadius: 20, border: "1px solid " + C.border }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ fontSize: 36, fontWeight: 800, background: "linear-gradient(135deg, " + C.primary + ", " + C.accent + ")", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            AI QUEST
+          </div>
+          <p style={{ color: C.textSecondary, fontSize: 14, marginTop: 8 }}>인공지능 지식 도전</p>
+        </div>
+
+        <div style={{ display: "flex", marginBottom: 24, background: C.card, borderRadius: 10, padding: 3 }}>
+          {["login", "signup"].map(function(m) {
+            return (
+              <div key={m} onClick={function() { setMode(m); setErr(""); }}
+                style={{
+                  flex: 1, textAlign: "center", padding: "10px 0", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 600,
+                  background: mode === m ? C.primary : "transparent", color: mode === m ? "#fff" : C.textSecondary, transition: "all .2s"
+                }}>
+                {m === "login" ? "로그인" : "회원가입"}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {mode === "signup" && (
+            <input placeholder="닉네임" value={username} onChange={function(e) { setUsername(e.target.value); }}
+              style={inputStyle} onFocus={function(e) { e.target.style.borderColor = C.primary; }} onBlur={function(e) { e.target.style.borderColor = C.border; }} />
+          )}
+          <input placeholder="아이디" value={id} onChange={function(e) { setId(e.target.value); }}
+            style={inputStyle} onFocus={function(e) { e.target.style.borderColor = C.primary; }} onBlur={function(e) { e.target.style.borderColor = C.border; }} />
+          <input placeholder="비밀번호" type="password" value={pw} onChange={function(e) { setPw(e.target.value); }}
+            style={inputStyle} onKeyDown={function(e) { if (e.key === "Enter") handleSubmit(); }}
+            onFocus={function(e) { e.target.style.borderColor = C.primary; }} onBlur={function(e) { e.target.style.borderColor = C.border; }} />
+        </div>
+
+        {err && <div style={{ color: C.danger, fontSize: 13, marginTop: 12, textAlign: "center" }}>{err}</div>}
+
+        <button onClick={handleSubmit} style={{
+          width: "100%", padding: "14px 0", marginTop: 20, border: "none", borderRadius: 10,
+          background: "linear-gradient(135deg, " + C.primary + ", " + C.primaryLight + ")", color: "#fff",
+          fontSize: 16, fontWeight: 700, cursor: "pointer", transition: "opacity .2s"
+        }}
+          onMouseEnter={function(e) { e.currentTarget.style.opacity = 0.9; }} onMouseLeave={function(e) { e.currentTarget.style.opacity = 1; }}>
+          {mode === "login" ? "로그인" : "가입하기"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Action Card ────────────────────────────────────────────────────────────
+function ActionCard({ icon, title, sub, color, onClick }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div onClick={onClick} onMouseEnter={function() { setHov(true); }} onMouseLeave={function() { setHov(false); }}
+      style={{
+        background: hov ? C.cardHover : C.card, border: "1px solid " + (hov ? color + "66" : C.border),
+        borderRadius: 14, padding: 22, cursor: "pointer", transition: "all .2s"
+      }}>
+      <div style={{ fontSize: 28, marginBottom: 10 }}>{icon}</div>
+      <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
+      <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 4 }}>{sub}</div>
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
+function MainPage({ user, goToLastStage, setPage }) {
+  const cleared = (user.clearedStages && user.clearedStages.length) || 0;
+  const progress = Math.round((cleared / STAGES.length) * 100);
+  const cs = cleared + 1;
+
+  return (
+    <div style={{ animation: "fadeIn .4s ease" }}>
+      <div style={{ textAlign: "center", padding: "40px 0 32px" }}>
+        <div style={{ fontSize: 14, color: C.accent, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>
+          Welcome back
+        </div>
+        <h1 style={{ fontSize: 32, fontWeight: 800, margin: "0 0 8px", color: C.textPrimary }}>{user.username || user.id}님, 환영합니다!</h1>
+        <p style={{ color: C.textSecondary, fontSize: 15 }}>AI 지식의 여정을 이어가세요</p>
+      </div>
+
+      <div style={{ background: C.card, borderRadius: 16, padding: 28, marginBottom: 24, border: "1px solid " + C.border }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>전체 진행률</span>
+          <span style={{ fontSize: 24, fontWeight: 800, color: C.accent }}>{progress}%</span>
+        </div>
+        <div style={{ height: 10, background: C.bg, borderRadius: 5, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: progress + "%", background: "linear-gradient(90deg, " + C.primary + ", " + C.accent + ")", borderRadius: 5, transition: "width .6s ease" }} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13, color: C.textSecondary }}>
+          <span>{cleared} / {STAGES.length} 클리어</span>
+          <span>업적 {(user.achievements && user.achievements.length) || 0} / {ACHIEVEMENTS.length}</span>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+        <ActionCard icon={"\u{1F680}"} title={cs <= STAGES.length ? "스테이지 " + cs : "모두 클리어!"} sub={cs <= STAGES.length ? STAGES[cs - 1].title : "축하합니다"} color={C.primary} onClick={goToLastStage} />
+        <ActionCard icon={"\u{1F4CB}"} title="스테이지 목록" sub="전체 진행 상황 보기" color={C.accent} onClick={function() { setPage("stages"); }} />
+        <ActionCard icon={"\u{1F3C6}"} title="내 업적" sub={((user.achievements && user.achievements.length) || 0) + "개 달성"} color={C.gold} onClick={function() { setPage("achievements"); }} />
+        <ActionCard icon={"\u{1F464}"} title="프로필" sub="계정 정보 관리" color={C.textSecondary} onClick={function() { setPage("profile"); }} />
+      </div>
+
+      {cs <= STAGES.length && (
+        <div style={{
+          background: "linear-gradient(135deg, " + C.primary + "22, " + C.accent + "15)",
+          border: "1px solid " + C.primary + "44", borderRadius: 16, padding: 28, textAlign: "center"
+        }}>
+          <div style={{ fontSize: 13, color: C.accent, fontWeight: 600, marginBottom: 8, letterSpacing: 1 }}>다음 도전</div>
+          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Stage {cs}: {STAGES[cs - 1].title}</div>
+          <div style={{ color: C.textSecondary, fontSize: 14, marginBottom: 20 }}>{STAGES[cs - 1].desc}</div>
+          <button onClick={goToLastStage} style={{
+            padding: "12px 40px", border: "none", borderRadius: 10,
+            background: "linear-gradient(135deg, " + C.primary + ", " + C.accent + ")",
+            color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer"
+          }}>
+            도전하기 →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Stages Page ────────────────────────────────────────────────────────────
+function StagesPage({ user, goToStage }) {
+  const cleared = user.clearedStages || [];
+  const cs = cleared.length + 1;
+
+  return (
+    <div style={{ animation: "fadeIn .4s ease" }}>
+      <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8, color: C.textPrimary }}>스테이지 목록</h2>
+      <p style={{ color: C.textSecondary, fontSize: 14, marginBottom: 28 }}>순서대로 클리어하며 AI 지식을 쌓아보세요</p>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 32 }}>
+        {STAGES.map(function(s) {
+          return (
+            <div key={s.id} style={{
+              flex: 1, height: 6, borderRadius: 3,
+              background: cleared.includes(s.id) ? C.accent : s.id === cs ? C.primary : C.border,
+              transition: "background .3s"
+            }} />
+          );
+        })}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {STAGES.map(function(s) {
+          const done = cleared.includes(s.id);
+          const active = s.id === cs;
+          const locked = s.id > cs;
+          const perfect = (user.perfectStages || []).includes(s.id);
+
+          return (
+            <div key={s.id} onClick={function() { if (!locked) goToStage(s.id); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 16, padding: "18px 22px",
+                background: active ? C.primary + "18" : C.card,
+                border: "1px solid " + (active ? C.primary + "55" : done ? C.accent + "44" : C.border),
+                borderRadius: 14, cursor: locked ? "not-allowed" : "pointer",
+                opacity: locked ? 0.45 : 1, transition: "all .2s"
+              }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                background: done ? C.accent + "22" : active ? C.primary + "22" : C.bg,
+                fontSize: done ? 20 : 16, fontWeight: 700, color: done ? C.accent : active ? C.primary : C.textDim
+              }}>
+                {done ? "\u2713" : locked ? "\u{1F512}" : s.id}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  Stage {s.id}: {s.title}
+                  {perfect && <span style={{ fontSize: 11, background: C.gold + "22", color: C.gold, padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>PERFECT</span>}
+                </div>
+                <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 2 }}>{s.desc}</div>
+              </div>
+              {active && <span style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>도전하기 →</span>}
+              {done && <span style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>클리어!</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Btn ────────────────────────────────────────────────────────────────────
+function Btn({ onClick, bg, color, border, label }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: "12px 28px", border: border ? "1px solid " + border : "none", borderRadius: 10,
+      background: bg, color: color || "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer"
+    }}>{label}</button>
+  );
+}
+
+// ─── Play Page ──────────────────────────────────────────────────────────────
+function PlayPage({ stageId, user, updateUser, checkAchievements, setPage, goToStage }) {
+  const stage = STAGES.find(function(s) { return s.id === stageId; });
+  const [qi, setQi] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const startTimeRef = useRef(Date.now());
+
+  useEffect(function() {
+    setQi(0);
+    setScore(0);
+    setSelected(null);
+    setShowResult(false);
+    setFinished(false);
+    startTimeRef.current = Date.now();
+  }, [stageId]);
+
+  if (!stage) return React.createElement("div", null, "스테이지를 찾을 수 없습니다.");
+
+  const q = stage.questions[qi];
+  const total = stage.questions.length;
+  const isCorrect = selected === q.answer;
+
+  const handleSelect = function(idx) {
+    if (showResult) return;
+    setSelected(idx);
+    setShowResult(true);
+
+    const newScore = idx === q.answer ? score + 1 : score;
+    if (idx === q.answer) setScore(newScore);
+
+    setTimeout(function() {
+      if (qi + 1 < total) {
+        setQi(qi + 1);
+        setSelected(null);
+        setShowResult(false);
+      } else {
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        const passed = newScore >= Math.ceil(total * 0.6);
+        const perfect = newScore === total;
+        const wasFailed = (user.failedStages || []).includes(stageId);
+
+        const updates = {};
+        Object.keys(user).forEach(function(k) { updates[k] = user[k]; });
+
+        if (passed && !(user.clearedStages || []).includes(stageId)) {
+          updates.clearedStages = (user.clearedStages || []).concat([stageId]);
+          updates.currentStreak = (user.currentStreak || 0) + 1;
+          updates.maxStreak = Math.max(updates.currentStreak, user.maxStreak || 0);
+        }
+        if (!passed) {
+          const fs = (user.failedStages || []).slice();
+          if (fs.indexOf(stageId) === -1) fs.push(stageId);
+          updates.failedStages = fs;
+          updates.currentStreak = 0;
+        }
+        if (perfect) {
+          const ps = (user.perfectStages || []).slice();
+          if (ps.indexOf(stageId) === -1) ps.push(stageId);
+          updates.perfectStages = ps;
+        }
+        if (elapsed < 60 && passed) updates.speedClear = true;
+        if (passed && wasFailed) updates.retryClears = (user.retryClears || 0) + 1;
+
+        updates.achievements = checkAchievements(updates);
+        var id = updates.id;
+        var rest = {};
+        Object.keys(updates).forEach(function(k) { if (k !== "id") rest[k] = updates[k]; });
+        updateUser(rest);
+        setFinished({ passed: passed, score: newScore, total: total, perfect: perfect, elapsed: elapsed });
+      }
+    }, 1200);
+  };
+
+  if (finished) {
+    const nextId = stageId + 1;
+    const hasNext = nextId <= STAGES.length;
+    return (
+      <div style={{ animation: "fadeIn .4s ease", textAlign: "center", paddingTop: 40 }}>
+        <div style={{ fontSize: 64, marginBottom: 16 }}>{finished.passed ? (finished.perfect ? "\u{1F451}" : "\u{1F389}") : "\u{1F622}"}</div>
+        <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8, color: C.textPrimary }}>
+          {finished.passed ? (finished.perfect ? "퍼펙트 클리어!" : "스테이지 클리어!") : "아쉽네요..."}
+        </h2>
+        <p style={{ color: C.textSecondary, fontSize: 15, marginBottom: 28 }}>
+          {finished.score} / {finished.total} 정답 ({Math.round(finished.elapsed)}초)
+          {!finished.passed && <React.Fragment><br />60% 이상 정답 시 클리어됩니다</React.Fragment>}
+        </p>
+
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          {!finished.passed && (
+            <Btn onClick={function() { setQi(0); setScore(0); setSelected(null); setShowResult(false); setFinished(false); startTimeRef.current = Date.now(); }}
+              bg={C.primary} label="다시 도전" />
+          )}
+          {finished.passed && hasNext && (
+            <Btn onClick={function() { goToStage(nextId); }} bg={C.accent} color={C.bg} label={"스테이지 " + nextId + " →"} />
+          )}
+          <Btn onClick={function() { setPage("stages"); }} bg={C.card} border={C.border} label="스테이지 목록" />
+          <Btn onClick={function() { setPage("main"); }} bg={C.card} border={C.border} label="메인으로" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ animation: "fadeIn .3s ease" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>Stage {stage.id}</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>{stage.title}</div>
+        </div>
+        <div style={{ fontSize: 14, color: C.textSecondary, fontWeight: 600 }}>
+          {qi + 1} / {total}
+        </div>
+      </div>
+
+      <div style={{ height: 4, background: C.bg, borderRadius: 2, marginBottom: 32 }}>
+        <div style={{ height: "100%", width: ((qi + 1) / total) * 100 + "%", background: "linear-gradient(90deg, " + C.primary + ", " + C.accent + ")", borderRadius: 2, transition: "width .3s" }} />
+      </div>
+
+      <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 16, padding: 28, marginBottom: 20 }}>
+        <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, marginBottom: 12, letterSpacing: 1 }}>QUESTION {qi + 1}</div>
+        <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.6 }}>{q.q}</div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {q.options.map(function(opt, idx) {
+          var bg = C.card, bdr = C.border, col = C.textPrimary;
+          if (showResult) {
+            if (idx === q.answer) { bg = C.accent + "22"; bdr = C.accent; col = C.accent; }
+            else if (idx === selected && !isCorrect) { bg = C.danger + "15"; bdr = C.danger; col = C.danger; }
+          } else if (selected === idx) {
+            bg = C.primary + "18"; bdr = C.primary;
+          }
+          return (
+            <div key={idx} onClick={function() { handleSelect(idx); }}
+              style={{
+                padding: "16px 20px", background: bg, border: "1px solid " + bdr,
+                borderRadius: 12, cursor: showResult ? "default" : "pointer",
+                fontSize: 15, color: col, transition: "all .2s", display: "flex", alignItems: "center", gap: 12
+              }}>
+              <span style={{
+                width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                background: showResult && idx === q.answer ? C.accent : showResult && idx === selected ? C.danger : C.primary + "22",
+                color: showResult ? "#fff" : C.primary, fontSize: 13, fontWeight: 700, flexShrink: 0
+              }}>
+                {showResult && idx === q.answer ? "\u2713" : showResult && idx === selected ? "\u2717" : String.fromCharCode(65 + idx)}
+              </span>
+              {opt}
+            </div>
+          );
+        })}
+      </div>
+
+      {showResult && (
+        <div style={{ marginTop: 16, padding: "14px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, textAlign: "center",
+          background: isCorrect ? C.accent + "15" : C.danger + "15",
+          color: isCorrect ? C.accent : C.danger
+        }}>
+          {isCorrect ? "정답입니다! \u{1F389}" : "오답입니다. 정답: " + q.options[q.answer]}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Achievements Page ──────────────────────────────────────────────────────
+function AchievementsPage({ user }) {
+  const earned = user.achievements || [];
+  return (
+    <div style={{ animation: "fadeIn .4s ease" }}>
+      <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8, color: C.textPrimary }}>내 업적</h2>
+      <p style={{ color: C.textSecondary, fontSize: 14, marginBottom: 28 }}>
+        {earned.length} / {ACHIEVEMENTS.length} 달성
+      </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        {ACHIEVEMENTS.map(function(a) {
+          const done = earned.includes(a.id);
+          return (
+            <div key={a.id} style={{
+              padding: 22, background: done ? C.gold + "08" : C.card,
+              border: "1px solid " + (done ? C.gold + "44" : C.border),
+              borderRadius: 14, opacity: done ? 1 : 0.5, transition: "all .2s"
+            }}>
+              <div style={{ fontSize: 36, marginBottom: 10, filter: done ? "none" : "grayscale(1)" }}>{a.icon}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>
+              <div style={{ fontSize: 13, color: C.textSecondary }}>{a.desc}</div>
+              {done && <div style={{ marginTop: 10, fontSize: 11, color: C.gold, fontWeight: 700, letterSpacing: 1 }}>{"\u2713"} 달성 완료</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Profile Page ───────────────────────────────────────────────────────────
+function ProfilePage({ user, updateUser }) {
+  const [newUsername, setNewUsername] = useState(user.username || "");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const handleSaveName = function() {
+    if (!newUsername.trim()) return setMsg("닉네임을 입력해주세요.");
+    updateUser({ username: newUsername.trim() });
+    const users = getUsers();
+    users[user.id].username = newUsername.trim();
+    saveUsers(users);
+    setMsg("닉네임이 변경되었습니다!");
+    setTimeout(function() { setMsg(""); }, 2000);
+  };
+
+  const handleSavePw = function() {
+    if (!newPw || !confirmPw) return setMsg("비밀번호를 입력해주세요.");
+    if (newPw.length < 4) return setMsg("비밀번호는 4자 이상이어야 합니다.");
+    if (newPw !== confirmPw) return setMsg("비밀번호가 일치하지 않습니다.");
+    const users = getUsers();
+    users[user.id].pw = newPw;
+    saveUsers(users);
+    setNewPw(""); setConfirmPw("");
+    setMsg("비밀번호가 변경되었습니다!");
+    setTimeout(function() { setMsg(""); }, 2000);
+  };
+
+  const inputStyle = {
+    width: "100%", padding: "12px 16px", background: C.bg, border: "1px solid " + C.border,
+    borderRadius: 10, color: C.textPrimary, fontSize: 14, outline: "none"
+  };
+
+  return (
+    <div style={{ animation: "fadeIn .4s ease", maxWidth: 480 }}>
+      <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 28, color: C.textPrimary }}>프로필</h2>
+
+      <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{
+          width: 80, height: 80, borderRadius: "50%", margin: "0 auto 12px",
+          background: "linear-gradient(135deg, " + C.primary + ", " + C.accent + ")",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 32, fontWeight: 700, color: "#fff"
+        }}>
+          {(user.username || user.id)[0].toUpperCase()}
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>{user.username || user.id}</div>
+        <div style={{ fontSize: 13, color: C.textSecondary }}>ID: {user.id}</div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 28 }}>
+        {[
+          { label: "클리어", val: (user.clearedStages && user.clearedStages.length) || 0 },
+          { label: "퍼펙트", val: (user.perfectStages && user.perfectStages.length) || 0 },
+          { label: "업적", val: (user.achievements && user.achievements.length) || 0 },
+        ].map(function(s) {
+          return (
+            <div key={s.label} style={{ textAlign: "center", padding: 16, background: C.card, borderRadius: 12, border: "1px solid " + C.border }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: C.accent }}>{s.val}</div>
+              <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>{s.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ background: C.card, borderRadius: 14, padding: 22, marginBottom: 16, border: "1px solid " + C.border }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>닉네임 변경</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <input value={newUsername} onChange={function(e) { setNewUsername(e.target.value); }} style={Object.assign({}, inputStyle, { flex: 1 })}
+            onFocus={function(e) { e.target.style.borderColor = C.primary; }} onBlur={function(e) { e.target.style.borderColor = C.border; }} />
+          <button onClick={handleSaveName} style={{
+            padding: "0 20px", border: "none", borderRadius: 10,
+            background: C.primary, color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 14, whiteSpace: "nowrap"
+          }}>변경</button>
+        </div>
+      </div>
+
+      <div style={{ background: C.card, borderRadius: 14, padding: 22, border: "1px solid " + C.border }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>비밀번호 변경</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input placeholder="새 비밀번호" type="password" value={newPw} onChange={function(e) { setNewPw(e.target.value); }} style={inputStyle}
+            onFocus={function(e) { e.target.style.borderColor = C.primary; }} onBlur={function(e) { e.target.style.borderColor = C.border; }} />
+          <input placeholder="비밀번호 확인" type="password" value={confirmPw} onChange={function(e) { setConfirmPw(e.target.value); }} style={inputStyle}
+            onFocus={function(e) { e.target.style.borderColor = C.primary; }} onBlur={function(e) { e.target.style.borderColor = C.border; }} />
+          <button onClick={handleSavePw} style={{
+            padding: "12px 0", border: "none", borderRadius: 10,
+            background: C.primary, color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 14
+          }}>비밀번호 변경</button>
+        </div>
+      </div>
+
+      {msg && <div style={{
+        marginTop: 16, padding: "12px 20px", borderRadius: 10, textAlign: "center",
+        background: msg.indexOf("변경되었습니다") !== -1 ? C.accent + "15" : C.danger + "15",
+        color: msg.indexOf("변경되었습니다") !== -1 ? C.accent : C.danger,
+        fontSize: 14, fontWeight: 600
+      }}>{msg}</div>}
+    </div>
+  );
+}
+
+// ─── Main App ───────────────────────────────────────────────────────────────
+function App() {
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState("main");
+  const [stageId, setStageId] = useState(null);
+  const [popup, setPopup] = useState(null);
+  const [profileMenu, setProfileMenu] = useState(false);
+  const popupTimer = useRef(null);
+
+  useEffect(function() {
+    const sid = sessionStorage.getItem("ai_quiz_session");
+    if (sid) {
+      const users = getUsers();
+      if (users[sid]) setUser(Object.assign({ id: sid }, users[sid]));
+    }
+  }, []);
+
+  const login = function(id, data) {
+    sessionStorage.setItem("ai_quiz_session", id);
+    setUser(Object.assign({ id: id }, data));
+  };
+
+  const logout = function() {
+    sessionStorage.removeItem("ai_quiz_session");
+    setUser(null);
+    setPage("main");
+    setProfileMenu(false);
+  };
+
+  const updateUser = useCallback(function(updates) {
+    setUser(function(prev) {
+      const next = Object.assign({}, prev, updates);
+      const rest = {};
+      Object.keys(next).forEach(function(k) { if (k !== "id") rest[k] = next[k]; });
+      saveUser(next.id, rest);
+      return next;
+    });
+  }, []);
+
+  const showAchievementPopup = useCallback(function(ach) {
+    setPopup(ach);
+    if (popupTimer.current) clearTimeout(popupTimer.current);
+    popupTimer.current = setTimeout(function() { setPopup(null); }, 3500);
+  }, []);
+
+  const checkAchievements = useCallback(function(userData) {
+    const prev = (userData.achievements || []).slice();
+    ACHIEVEMENTS.forEach(function(a) {
+      if (prev.indexOf(a.id) === -1 && a.condition(userData)) {
+        prev.push(a.id);
+        showAchievementPopup(a);
+      }
+    });
+    return prev;
+  }, [showAchievementPopup]);
+
+  const goToStage = function(id) { setStageId(id); setPage("play"); };
+  const currentStage = function() { return ((user && user.clearedStages && user.clearedStages.length) || 0) + 1; };
+
+  const goToLastStage = function() {
+    const cs = currentStage();
+    if (cs <= STAGES.length) goToStage(cs);
+    else setPage("stages");
+  };
+
+  if (!user) return React.createElement(AuthScreen, { onLogin: login });
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.textPrimary, fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif" }}>
+      {/* Nav */}
+      <nav style={{ background: C.surface, borderBottom: "1px solid " + C.border, padding: "0 20px", display: "flex", alignItems: "center", height: 60, position: "sticky", top: 0, zIndex: 100, gap: 0 }}>
+        <div onClick={function() { setPage("main"); }} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, marginRight: 32 }}>
+          <span style={{ fontSize: 22, fontWeight: 800, background: "linear-gradient(135deg, " + C.primary + ", " + C.accent + ")", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>AI QUEST</span>
+        </div>
+        <NavBtn active={page === "stages"} onClick={function() { setPage("stages"); }}>{"\u{1F4CB}"} 스테이지</NavBtn>
+        <NavBtn onClick={goToLastStage}>{"\u{1F680}"} 바로가기</NavBtn>
+        <NavBtn active={page === "achievements"} onClick={function() { setPage("achievements"); }}>{"\u{1F3C6}"} 업적</NavBtn>
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <div onClick={function() { setProfileMenu(!profileMenu); }} style={{
+            cursor: "pointer", width: 36, height: 36, borderRadius: "50%",
+            background: "linear-gradient(135deg, " + C.primary + ", " + C.accent + ")",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, fontWeight: 700, color: "#fff", userSelect: "none"
+          }}>
+            {(user.username || user.id)[0].toUpperCase()}
+          </div>
+          {profileMenu && (
+            <div style={{
+              position: "absolute", right: 0, top: 44, background: C.card,
+              border: "1px solid " + C.border, borderRadius: 12, minWidth: 180,
+              boxShadow: "0 8px 32px rgba(0,0,0,.4)", overflow: "hidden", zIndex: 200
+            }}>
+              <div onClick={function() { setPage("profile"); setProfileMenu(false); }}
+                style={{ padding: "14px 20px", cursor: "pointer", fontSize: 14, borderBottom: "1px solid " + C.border, transition: "background .15s" }}
+                onMouseEnter={function(e) { e.currentTarget.style.background = C.cardHover; }}
+                onMouseLeave={function(e) { e.currentTarget.style.background = "transparent"; }}>
+                {"\u{1F464}"} 프로필
+              </div>
+              <div onClick={logout}
+                style={{ padding: "14px 20px", cursor: "pointer", fontSize: 14, color: C.danger, transition: "background .15s" }}
+                onMouseEnter={function(e) { e.currentTarget.style.background = C.cardHover; }}
+                onMouseLeave={function(e) { e.currentTarget.style.background = "transparent"; }}>
+                {"\u{1F6AA}"} 로그아웃
+              </div>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Achievement Popup */}
+      {popup && (
+        <div style={{
+          position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)",
+          background: "linear-gradient(135deg, " + C.card + ", " + C.surface + ")",
+          border: "2px solid " + C.gold, borderRadius: 16, padding: "20px 32px",
+          zIndex: 999, display: "flex", alignItems: "center", gap: 16,
+          boxShadow: "0 0 40px rgba(255, 215, 0, .25)",
+          animation: "slideDown .4s ease"
+        }}>
+          <span style={{ fontSize: 40 }}>{popup.icon}</span>
+          <div>
+            <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>업적 달성!</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{popup.title}</div>
+            <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 2 }}>{popup.desc}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 20px" }} onClick={function() { if (profileMenu) setProfileMenu(false); }}>
+        {page === "main" && <MainPage user={user} goToStage={goToStage} goToLastStage={goToLastStage} setPage={setPage} />}
+        {page === "stages" && <StagesPage user={user} goToStage={goToStage} />}
+        {page === "achievements" && <AchievementsPage user={user} />}
+        {page === "profile" && <ProfilePage user={user} updateUser={updateUser} />}
+        {page === "play" && <PlayPage stageId={stageId} user={user} updateUser={updateUser} checkAchievements={checkAchievements} setPage={setPage} goToStage={goToStage} />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
